@@ -1,8 +1,14 @@
+import logging
+
 from fastapi import APIRouter, File, HTTPException, UploadFile
+
 from app.models.document import DocumentListResponse, DocumentMetadata
 from app.services.document_store import delete_document, ingest_upload, list_documents
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
 
 @router.post("/upload", response_model=DocumentMetadata)
 async def upload_document(file: UploadFile = File(...)) -> DocumentMetadata:
@@ -11,11 +17,14 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentMetadata:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
+        logger.exception("Document ingestion failed for file: %s", file.filename)
         raise HTTPException(status_code=500, detail="Document ingestion failed") from exc
+
 
 @router.get("", response_model=DocumentListResponse)
 def get_documents() -> DocumentListResponse:
     return DocumentListResponse(documents=list_documents())
+
 
 @router.delete("/{document_id}")
 def remove_document(document_id: str) -> dict[str, str]:
